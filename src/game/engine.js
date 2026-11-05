@@ -27,7 +27,12 @@ export function startGame(root) {
 
   /* ---------- three setup ---------- */
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Adaptive resolution: start at the device ratio (capped lower on touch devices) and
+  // step down when frames run long, back up when there is headroom.
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const dprMax = Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2), dprMin = Math.min(1, dprMax);
+  let dpr = dprMax, frameAvg = 16.7, dprCool = 2;
+  renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x0d0a17);
   $('#stage').appendChild(renderer.domElement);
   const scene = new THREE.Scene();
@@ -44,6 +49,18 @@ export function startGame(root) {
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+    pausedDirty = true;
+  }
+  let pausedDirty = true;
+  function tuneResolution(ms) {
+    frameAvg += (Math.min(ms, 100) - frameAvg) * 0.05;
+    dprCool -= ms / 1000;
+    if (dprCool > 0) return;
+    // >24ms ≈ under ~40fps → drop; holding the display rate (≤18ms) for a while → try one step up.
+    let next = dpr, cool = 2;
+    if (frameAvg > 24 && dpr > dprMin) { next = Math.max(dprMin, dpr - 0.25); cool = 8; }
+    else if (frameAvg < 18 && dpr < dprMax) next = Math.min(dprMax, dpr + 0.25);
+    if (next !== dpr) { dpr = next; renderer.setPixelRatio(dpr); renderer.setSize(window.innerWidth, window.innerHeight); pausedDirty = true; dprCool = cool; frameAvg = 16.7; }
   }
   on(window, 'resize', resize); resize();
 
@@ -74,7 +91,8 @@ export function startGame(root) {
     on(b, 'pointerdown', down); on(b, 'pointerup', up); on(b, 'pointercancel', up); on(b, 'pointerleave', up);
     on(b, 'contextmenu', e => e.preventDefault());
   });
-  const isTouch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const isTouch = coarse;
+  root.classList.toggle('is-touch', isTouch);
 
   /* ---------- flow ---------- */
   function setFighters(i0, i1, x0, x1) {
@@ -228,24 +246,28 @@ export function startGame(root) {
   /* ---------- HUD ---------- */
   const hudEls = [0, 1].map(i => ({ hp: $('#hp' + i), lag: $('#lag' + i), exf: $('#exf' + i), exn: $('#exn' + i), ex: $('#ex' + i), combo: $('#combo' + i), wins: [...$$('#wins' + i + ' i')] }));
   const timerEl = $('#timer'), hudEl = $('#hud'), dimEl = $('#dim');
+  // Only touch the DOM when a displayed value actually changes.
+  const setW = (el, v) => { if (el._w !== v) { el._w = v; el.style.width = v; } };
+  const setT = (el, v) => { if (el._t !== v) { el._t = v; el.textContent = v; } };
+  const setC = (el, c, on) => { const k = '_c' + c; if (el[k] !== on) { el[k] = on; el.classList.toggle(c, on); } };
   function updateHud(rdt) {
     game.fighters.forEach((f, i) => {
       const e = hudEls[i], pct = f.hp / f.def.hp;
       if (f.lagHp > f.hp && f.state !== 'hitstun' && f.state !== 'knockdown') f.lagHp = Math.max(f.hp, f.lagHp - f.def.hp * 0.5 * rdt);
       if (f.lagHp < f.hp) f.lagHp = f.hp;
-      e.hp.style.width = (pct * 100).toFixed(2) + '%';
-      e.hp.classList.toggle('low', pct < 0.25);
-      e.lag.style.width = (f.lagHp / f.def.hp * 100).toFixed(2) + '%';
-      e.exf.style.width = f.energy.toFixed(1) + '%';
-      e.exn.textContent = Math.floor(f.energy);
-      e.ex.classList.toggle('full', f.energy >= 100);
-      e.wins.forEach((w, k) => w.classList.toggle('on', game.wins[i] > k));
+      setW(e.hp, (pct * 100).toFixed(1) + '%');
+      setC(e.hp, 'low', pct < 0.25);
+      setW(e.lag, (f.lagHp / f.def.hp * 100).toFixed(1) + '%');
+      setW(e.exf, f.energy.toFixed(1) + '%');
+      setT(e.exn, String(Math.floor(f.energy)));
+      setC(e.ex, 'full', f.energy >= 100);
+      e.wins.forEach((w, k) => setC(w, 'on', game.wins[i] > k));
       if (f.combo >= 2) { if (f.shownCombo !== f.combo) { e.combo.innerHTML = `${f.combo}<small>HITS</small>`; f.shownCombo = f.combo; } f.comboShow = 1; }
       else f.comboShow = Math.max(0, f.comboShow - rdt);
-      e.combo.classList.toggle('show', f.comboShow > 0);
+      setC(e.combo, 'show', f.comboShow > 0);
     });
     const t = Math.max(0, Math.ceil(game.timer));
-    timerEl.textContent = t; timerEl.classList.toggle('low', t <= 10);
+    setT(timerEl, String(t)); setC(timerEl, 'low', t <= 10);
   }
 
   /* ---------- camera ---------- */
@@ -291,8 +313,10 @@ export function startGame(root) {
   function frame(now) {
     if (disposed) return;
     raf = requestAnimationFrame(frame);
-    const rdt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
-    if (game.phase === 'paused') { renderer.render(scene, camera); return; }
+    const ms = now - last, rdt = Math.min(0.05, Math.max(0, ms / 1000)); last = now;
+    if (game.phase === 'paused') { if (pausedDirty) { renderer.render(scene, camera); pausedDirty = false; } return; }
+    pausedDirty = true;
+    if (ms > 0 && ms < 250) tuneResolution(ms);
     game.time += rdt;
     for (const e of game.later) e.t -= rdt;
     const dueL = game.later.filter(e => e.t <= 0); game.later = game.later.filter(e => e.t > 0); dueL.forEach(e => e.fn());

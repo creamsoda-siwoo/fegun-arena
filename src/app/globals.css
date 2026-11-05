@@ -60,12 +60,13 @@ kbd{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(
 .slot.s1.active{border-color:var(--p1)} .slot.s2.active{border-color:var(--p2)}
 .vs{font-family:var(--display);font-size:34px;color:var(--gold);transform:skewX(-8deg)}
 .roster{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-@media (min-width:761px) and (max-width:1279px){.card .pic{aspect-ratio:3/1}}
 @media (min-width:1280px){.roster{grid-template-columns:repeat(6,minmax(0,1fr))}}
 .card{position:relative;text-align:left;background:var(--panel);border:2px solid var(--line);color:var(--paper);padding:0;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;transition:transform .12s,border-color .12s}
 .card:hover,.card:focus-visible{transform:translateY(-4px);outline:none;border-color:var(--paper)}
 .card .pic{aspect-ratio:16/10;max-width:100%;background:radial-gradient(circle at 55% 45%,var(--c) 0%,transparent 68%),#1d1633;display:flex;justify-content:center;overflow:hidden}
-.card .pic img{height:100%;width:auto}
+.card .pic{position:relative;min-height:0}
+@media (min-width:761px) and (max-width:1279px) and (min-height:621px){.card .pic{aspect-ratio:3/1}}
+.card .pic img{position:absolute;top:0;left:50%;height:100%;width:auto;max-width:none;transform:translateX(-50%)}
 .card .meta{padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px}
 .card .nm{font-family:var(--display);font-size:22px;line-height:1;display:flex;align-items:baseline;gap:8px}
 .card .nm small{font-family:var(--body);font-size:10px;letter-spacing:.22em;color:var(--c);font-weight:900}
@@ -79,13 +80,67 @@ kbd{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(
 .tagP{position:absolute;top:8px;font-family:var(--display);font-size:14px;padding:2px 8px;color:var(--ink)}
 .tagP.t1{left:8px;background:var(--p1)} .tagP.t2{right:8px;background:var(--p2)}
 .card.p1sel{border-color:var(--p1)} .card.p2sel{border-color:var(--p2)} .card.p1sel.p2sel{border-color:var(--gold)}
-.go{align-self:center}
+.go{align-self:center;position:sticky;bottom:0;z-index:2}
 @media (max-width:760px){
-  .roster{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .moves{display:none}
-  .card .pic{aspect-ratio:2/1}
   .keys{grid-template-columns:auto 1fr}
   .keys .k2{display:none}
+}
+/* compact roster: phones and short (landscape) screens get horizontal cards so the whole grid and the start button fit */
+@media (max-width:760px),(max-height:620px){
+  #select{gap:10px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .sel-head{gap:8px 12px}
+  .sel-head p{font-size:12px;flex-basis:100%}
+  .sel-bottom{gap:10px}
+  .roster{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .card{flex-direction:row}
+  .card:hover,.card:focus-visible{transform:none}
+  .card .pic{aspect-ratio:auto;width:72px;flex:none;min-height:72px}
+  .card .meta{padding:7px 9px;gap:4px;min-width:0;flex:1}
+  .card .nm{font-size:18px;gap:6px;white-space:nowrap;overflow:hidden}
+  .card .nm small{letter-spacing:.12em}
+  .card .ti{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stats{gap:2px 6px;font-size:10px}
+  .pips{gap:2px}
+  .pips i{width:9px;height:5px}
+  .moves{display:none}
+  .tagP{top:4px;font-size:11px;padding:1px 6px}
+  .tagP.t1{left:4px} .tagP.t2{left:4px;right:auto;top:auto;bottom:4px}
+  .slot img{width:40px;height:40px}
+  .slot span{font-size:16px}
+  .vs{font-size:26px}
+  .go{font-size:19px;padding:10px 26px 10px 22px}
+}
+@media (max-height:620px) and (min-width:600px){
+  .roster{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sel-head p{flex-basis:auto}
+}
+@media (max-width:420px){
+  .card .nm small{display:none}
+}
+@media (max-height:420px) and (min-width:600px){
+  .card .ti{display:none}
+  .card .pic{width:64px;min-height:64px}
+  .sel-head h2{font-size:24px}
+}
+
+/* touch devices: no keyboard help */
+.is-touch .keys,.is-touch .kb-only{display:none}
+
+/* short screens: shrink the title so the menu fits without scrolling */
+@media (max-height:560px){
+  .menu-inner{gap:12px}
+  .logo{font-size:min(11vw,15vh)}
+  .tag{font-size:13px}
+  .btn{font-size:19px;padding:10px 26px 10px 22px}
+}
+@media (max-height:440px){
+  .menu-inner{gap:9px}
+  .logo{font-size:min(9vw,15vh)}
+  .tag,.note{display:none}
+}
+/* portrait phones: darken the stage behind the menu so the text stays readable over the fighters */
+@media (max-aspect-ratio:4/5){
+  #menu{background:linear-gradient(180deg,rgba(13,10,23,.9) 0%,rgba(13,10,23,.7) 55%,rgba(13,10,23,.82) 100%)}
 }
 
 /* ---------- HUD ---------- */
@@ -165,4 +220,25 @@ kbd{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(
 .tb{border-radius:50%;background:rgba(255,244,232,.1);border:2px solid rgba(255,244,232,.35);color:var(--paper);font-weight:900;font-size:13px;touch-action:none;padding:0}
 .tb.on{background:rgba(255,210,63,.5);border-color:var(--gold)}
 .tb.u{background:rgba(255,210,63,.15);border-color:rgba(255,210,63,.6)}
+/* narrow HUD: smaller portraits and timer so both names stay readable */
+@media (max-width:560px){
+  #hud{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+  .bars{gap:6px}
+  .side{gap:6px}
+  .pf{width:38px;height:38px}
+  .nmrow b{font-size:14px}
+  .nmrow span{font-size:9px;letter-spacing:.08em}
+  .hpbar{height:13px}
+  .wins i{width:8px;height:8px}
+  .timer{font-size:28px;min-width:48px;padding:4px 4px 2px}
+  .pausebtn{top:calc(58px + env(safe-area-inset-top,0px))}
+  .ex{width:40vw}
+  .combo{top:24%}
+}
+@media (max-height:440px){
+  .pausebtn{top:calc(62px + env(safe-area-inset-top,0px))}
+  #touch{bottom:calc(46px + env(safe-area-inset-bottom,0px))}
+  .pad{grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,46px)}
+  .pad.btns{grid-template-columns:repeat(2,52px);grid-template-rows:repeat(2,52px)}
+}
 @media (prefers-reduced-motion:reduce){#announce.go,#ult.go{animation-duration:1.4s}}

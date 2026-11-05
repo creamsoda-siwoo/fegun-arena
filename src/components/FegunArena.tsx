@@ -45,7 +45,7 @@ export default function FegunArena() {
             </div>
           </div>
         </div>
-        <button className="pausebtn" id="pauseBtn">일시정지 · ESC</button>
+        <button className="pausebtn" id="pauseBtn">일시정지<span className="kb-only"> · ESC</span></button>
         <div className="combo l" id="combo0" />
         <div className="combo r" id="combo1" />
         <div className="ex l" id="ex0">
