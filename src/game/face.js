@@ -8,6 +8,8 @@ const FACE = {
   yuki: { x: 0.106, y: -0.03, w: 0.066, h: 0.09, tilt: -0.04, lash: 0x1f3462, brow: { c: 0x6aa6d6, th: 0.011, ang: -0.1, dy: 0.05 }, mouth: 'smile', blush: true },
   rai: { x: 0.102, y: -0.004, w: 0.066, h: 0.048, tilt: 0.3, lash: 0x120d1e, brow: { c: 0x1d1a2c, th: 0.015, ang: 0.34, dy: 0.032 }, mouth: null },
   gou: { x: 0.108, y: -0.03, w: 0.056, h: 0.05, tilt: 0.12, lash: 0x1e140c, brow: { c: 0x3e2416, th: 0.027, ang: 0.3, dy: 0.034 }, mouth: 'grin' },
+  hana: { x: 0.105, y: -0.032, w: 0.064, h: 0.084, tilt: 0.04, lash: 0x2a1030, brow: { c: 0x3a1f3e, th: 0.01, ang: -0.06, dy: 0.05 }, mouth: 'smile', blush: true },
+  ren: { x: 0.103, y: -0.02, w: 0.064, h: 0.056, tilt: 0.24, lash: 0x150f22, brow: { c: 0x8f96b4, th: 0.013, ang: 0.2, dy: 0.04 }, mouth: 'flat' },
 };
 
 const S = 512, K = S / 0.64;
@@ -120,6 +122,7 @@ function drawMouth(ctx, f, def, state) {
   ctx.strokeStyle = '#6a2434'; ctx.beginPath();
   if (f.mouth === 'smirk') { ctx.lineWidth = 0.008 * K; ctx.moveTo(mx - 0.03 * K, my); ctx.quadraticCurveTo(mx, my + 0.006 * K, mx + 0.03 * K, my - 0.01 * K); }
   else if (f.mouth === 'smile') { ctx.lineWidth = 0.008 * K; ctx.moveTo(mx - 0.026 * K, my - 0.002 * K); ctx.quadraticCurveTo(mx, my + 0.016 * K, mx + 0.026 * K, my - 0.002 * K); }
+  else if (f.mouth === 'flat') { ctx.lineWidth = 0.007 * K; ctx.moveTo(mx - 0.02 * K, my + 0.002 * K); ctx.quadraticCurveTo(mx, my - 0.003 * K, mx + 0.02 * K, my + 0.001 * K); }
   else { ctx.lineWidth = 0.011 * K; ctx.strokeStyle = '#4a1e16'; ctx.moveTo(mx - 0.044 * K, my + 0.004 * K); ctx.quadraticCurveTo(mx, my - 0.008 * K, mx + 0.044 * K, my + 0.004 * K); }
   ctx.stroke();
   void def;
