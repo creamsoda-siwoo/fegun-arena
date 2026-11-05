@@ -101,3 +101,85 @@ export function icePillars(x) {
 }
 
 export function dust(x, n = 8) { burst(x, 0.1, 0, 0xd9c6ae, n, 2.5, 0.09, 0.45, 1.5); }
+
+/** Spear thrust: a stretched glowing cone that shoots forward and fades. */
+export function stabFx(f) {
+  const scene = rt.scene, mat = new THREE.MeshBasicMaterial({ color: f.def.pal.accent, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const m = new THREE.Mesh(gCone, mat), s = f.def.scale;
+  m.rotation.z = f.facing > 0 ? -Math.PI / 2 : Math.PI / 2;
+  m.position.set(f.x + f.facing * 1.6 * s, f.y + 1.2 * s, 0.35); m.scale.set(0.16, 1.4, 0.16); scene.add(m);
+  let t = 0;
+  addFx(dt => {
+    t += dt; const k = t / 0.16;
+    m.position.x += f.facing * dt * 6; m.scale.set(0.16 * (1 - k * 0.6), 1.4 + k * 0.8, 0.16 * (1 - k * 0.6)); mat.opacity = 0.9 * (1 - k);
+    if (k >= 1) { scene.remove(m); mat.dispose(); return false; } return true;
+  });
+}
+
+/** Ring of dark spikes bursting out of the ground at x. */
+export function shadowSpikes(x, color, big) {
+  const scene = rt.scene, g = G(); g.position.set(x, 0, 0); scene.add(g);
+  const n = big ? 9 : 6;
+  for (let i = 0; i < n; i++) {
+    const h = (big ? 2.2 : 1.5) + Math.random() * 0.9;
+    const m = part(gCone, i % 3 ? 0x2a1d44 : 0x4b2f7a, { w: 1.4 });
+    m.scale.set(0.16 + Math.random() * 0.1, h, 0.16 + Math.random() * 0.1);
+    const a = (i / n) * Math.PI * 2;
+    m.position.set(Math.cos(a) * 0.45 * Math.random(), h / 2, Math.sin(a) * 0.35);
+    m.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+    g.add(m);
+  }
+  const core = new THREE.Mesh(gCyl, glow(color, 0.35)); core.scale.set(0.5, 3, 0.5); core.position.y = 1.5; g.add(core);
+  g.scale.y = 0.01;
+  let t = 0;
+  addFx(dt => {
+    t += dt;
+    g.scale.y = t < 0.08 ? Math.max(0.01, t / 0.08) : t < 0.55 ? 1 : Math.max(0.01, 1 - (t - 0.55) / 0.3);
+    core.visible = t < 0.25;
+    if (t >= 0.85) { scene.remove(g); return false; } return true;
+  });
+}
+
+/** Swirling column of sakura petals around x for `dur` seconds. */
+export function petalStorm(x, dur, scale = 1) {
+  const scene = rt.scene, g = G(); g.position.set(x, 0, 0); scene.add(g);
+  const petals = [];
+  for (let i = 0; i < 46; i++) {
+    const m = new THREE.Mesh(gSph, basic(i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xffa8c8 : 0xff6fa5));
+    m.scale.set(0.09, 0.05, 0.02);
+    petals.push({ m, a: Math.random() * Math.PI * 2, y: Math.random() * 3, r: 0.5 + Math.random() * 0.7, w: 7 + Math.random() * 5 });
+    g.add(m);
+  }
+  const col = new THREE.Mesh(gCone, glow(0xff8fbf, 0.28)); col.scale.set(1.2, 3.4, 1.2); col.rotation.x = Math.PI; col.position.y = 1.7; g.add(col);
+  g.scale.setScalar(scale);
+  let t = 0;
+  addFx(dt => {
+    t += dt;
+    for (const p of petals) {
+      p.a += p.w * dt; p.y = (p.y + dt * 2.6) % 3.4;
+      const r = p.r * (0.55 + p.y / 3.4 * 0.7);
+      p.m.position.set(Math.cos(p.a) * r, p.y, Math.sin(p.a) * r * 0.7);
+      p.m.rotation.set(p.a * 2, p.a, 0);
+    }
+    col.rotation.y += dt * 12;
+    const k = t / dur; col.material.opacity = 0.28;
+    g.scale.setScalar(scale * (k < 0.1 ? Math.max(0.05, k / 0.1) : k > 0.85 ? Math.max(0.05, (1 - k) / 0.15) : 1));
+    if (t >= dur) { scene.remove(g); return false; } return true;
+  });
+}
+
+/** A straight glowing slash line between two x positions (dash afterimage). */
+export function streak(x0, x1, y, color) {
+  const scene = rt.scene, mats = [], g = G();
+  [[0.08, 0xffffff], [0.24, color]].forEach(([th, c]) => {
+    const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }); mats.push(mat);
+    const m = new THREE.Mesh(gCyl, mat); m.rotation.z = Math.PI / 2; m.scale.set(th, Math.abs(x1 - x0) + 0.6, th); g.add(m);
+  });
+  g.position.set((x0 + x1) / 2, y, 0.3); scene.add(g);
+  let t = 0;
+  addFx(dt => {
+    t += dt; const k = t / 0.45;
+    mats.forEach(m => { m.opacity = Math.max(0, 1 - k); }); g.scale.y = g.scale.z = 1 - k * 0.7;
+    if (k >= 1) { scene.remove(g); mats.forEach(m => m.dispose()); return false; } return true;
+  });
+}

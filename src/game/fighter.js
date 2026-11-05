@@ -5,7 +5,7 @@ import { SFX } from './audio';
 import { glow } from './toon';
 import { buildModel, disposeModel } from './models';
 import { P0, stance, POSES, poseJump, poseGuard, poseHurt, poseFly, poseLie, poseWin, poseUlt, applyPose } from './poses';
-import { burst, ring, bolt, dust, slashFx } from './fx';
+import { burst, ring, bolt, dust, slashFx, stabFx } from './fx';
 import { ARENA, GRAV, MOVES, specialMove, startUlt, gouImpact } from './combat';
 
 export class Fighter {
@@ -119,7 +119,11 @@ export class Fighter {
       if (m.teleport) this.teleport(opp);
       if (m.fire) m.fire(this, opp);
       if (m.arcBig) slashFx(this, true);
-      if (!m.noHit) { SFX.swing(); if (this.def.weapon === 'sword' || m.pose === 'slash') slashFx(this, m === this.heavy); }
+      if (!m.noHit) {
+        SFX.swing();
+        if (this.def.weapon === 'sword' || m.pose === 'slash') slashFx(this, m === this.heavy);
+        else if (m.pose === 'thrust') stabFx(this);
+      }
     }
     if (!m.noHit && !this.hitDone && t >= m.startup && t < m.startup + m.active) this.checkHit(opp, m);
     if (t >= m.startup) {

@@ -51,7 +51,7 @@ export class AI {
     const r = R();
     if (r < 0.5) { this.tap('light'); this.mash = [0, 1, 2][L] + (R() < 0.5 ? 1 : 0); }
     else if (r < 0.7) this.tap('heavy');
-    else if (r < 0.78 && f.energy >= 25 && f.def.special !== 'fireball') this.tap('special');
+    else if (r < 0.78 && f.energy >= 25 && f.def.special !== 'fireball' && f.def.special !== 'shade') this.tap('special');
     else if (r < 0.9) this.hold.down = true;
     else this.hold[back] = true;
   }

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { rt, clamp, hexCss, schedule, hitstop, addShake } from './runtime';
 import { SFX } from './audio';
 import { G, part, basic, glow } from './toon';
-import { burst, ring, bolt, icePillars, dust, gSph, gCone, gShard, gRock } from './fx';
+import { burst, ring, bolt, icePillars, dust, shadowSpikes, petalStorm, streak, gSph, gCone, gShard, gRock } from './fx';
 
 export const ARENA = 9.5, GRAV = -38;
 
@@ -22,6 +22,8 @@ export function specialMove(def) {
     case 'ice': return { pose: 'cast', startup: 0.18, active: 0.05, recovery: 0.32, noHit: true, fire: fireIce };
     case 'flash': return { pose: 'dash', startup: 0.2, active: 0.1, recovery: 0.32, dmg: 85, range: 1.6, kb: 4, stun: 0.5, hs: 0.1, energy: 0, knock: true, launch: 7, teleport: true };
     case 'quake': return { pose: 'slam', startup: 0.26, active: 0.05, recovery: 0.36, noHit: true, fire: fireQuake };
+    case 'gale': return { pose: 'cast', startup: 0.2, active: 0.05, recovery: 0.32, noHit: true, fire: fireGale };
+    case 'shade': return { pose: 'thrust', startup: 0.22, active: 0.05, recovery: 0.4, noHit: true, fire: fireShade };
   }
 }
 
@@ -44,6 +46,16 @@ function projMesh(kind, f) {
       m.position.set((i - 1) * 0.3 * -f.facing, 0.4, (i - 1) * 0.18); m.scale.setScalar(i === 1 ? 1.2 : 0.8); m.rotation.set(i, i * 2, 0);
       g.add(m);
     }
+  } else if (kind === 'gale') {
+    const sw = G(); g.add(sw);
+    [[0.55, 0.0, 0xffffff, 0.35], [0.42, 0.35, 0xff8fbf, 0.5]].forEach(([r, y, c, o]) => {
+      const m = new THREE.Mesh(gCone, glow(c, o)); m.scale.set(r, 1.5, r); m.rotation.x = Math.PI; m.position.y = y; sw.add(m);
+    });
+    for (let i = 0; i < 10; i++) {
+      const pt = new THREE.Mesh(gSph, basic(i % 2 ? 0xffffff : 0xff8fbf)); pt.scale.set(0.07, 0.04, 0.02);
+      const a = i * 2.4, h = -0.6 + (i / 10) * 1.3, r = 0.2 + (h + 0.6) * 0.3;
+      pt.position.set(Math.cos(a) * r, h, Math.sin(a) * r); sw.add(pt);
+    }
   }
   return g;
 }
@@ -65,6 +77,20 @@ function fireIce(f) {
   [-0.25, 0, 0.25].forEach((a, i) => makeProj({ owner: f, kind: 'ice', x: f.x + f.facing * 0.8, y: f.y + (1.05 + i * 0.25) * s, vx: f.facing * 13, vy: a * 3, r: 0.2, life: 1.2,
     move: { dmg: 33, kb: 1.4, stun: 0.3, hs: 0.04, energy: 4 } }));
 }
+function fireGale(f) {
+  const s = f.def.scale; SFX.swing();
+  makeProj({ owner: f, kind: 'gale', x: f.x + f.facing * 0.9, y: 0.85 * s, vx: f.facing * 7.5, r: 0.5, life: 1.5,
+    move: { dmg: 75, kb: 1.5, launch: 9, knock: true, stun: 0.5, hs: 0.08, energy: 8 } });
+  burst(f.x + f.facing * 0.9, 0.9 * s, 0.2, 0xffa8c8, 8, 4, 0.06, 0.35, 0);
+}
+function fireShade(f, o) {
+  const X = clamp(f.x + f.facing * 3.1, -ARENA, ARENA), col = f.def.pal.accent;
+  ring(X, 0.05, 0, col, 0.2, 1.3, 0.3, true); dust(X, 5);
+  schedule(0.2, () => {
+    shadowSpikes(X, col); SFX.thud(); SFX.zap(); addShake(0.2);
+    if (Math.abs(o.x - X) < 1.1 && o.y < 1.8 && o.canBeHit()) o.receive(f, { dmg: 95, kb: 2, launch: 10, knock: true, stun: 0.5, hs: 0.1, energy: 8 }, Math.sign(o.x - f.x) || f.facing);
+  });
+}
 function fireQuake(f) {
   addShake(0.25); dust(f.x + f.facing * 0.8, 14); SFX.thud();
   ring(f.x + f.facing * 0.8, 0.05, 0, 0x8fdc4f, 0.2, 2.2, 0.35, true);
@@ -83,6 +109,10 @@ export function updateProjs(dt) {
       const big = p.kind === 'bigfire';
       if (Math.random() < (big ? 1 : 0.6)) burst(p.x - Math.sign(p.vx) * 0.3, p.y + (Math.random() - 0.5) * (big ? 1.6 : 0.4), 0, Math.random() < 0.5 ? 0xff7a2a : 0xffd04a, big ? 3 : 1, 2, big ? 0.22 : 0.08, 0.35, 2);
     } else if (p.kind === 'ice') { p.mesh.rotation.x += dt * 14; }
+    else if (p.kind === 'gale') {
+      p.mesh.children[0].rotation.y += dt * 18;
+      if (Math.random() < 0.4) burst(p.x, p.y + (Math.random() - 0.3), 0, Math.random() < 0.5 ? 0xffa8c8 : 0xffffff, 1, 2, 0.05, 0.4, 1);
+    }
     else if (p.kind === 'quake') {
       p.mesh.children.forEach((c, i) => { c.scale.y = (i === 1 ? 1.2 : 0.8) * (0.6 + Math.abs(Math.sin(p.t * 18 + i)) * 0.6); });
       if (Math.random() < 0.5) dust(p.x, 1);
@@ -149,6 +179,39 @@ export function doUlt(f) {
         const X = o.x; bolt(X, 0xffe14a); SFX.zap(); addShake(0.25);
         if (Math.abs(o.x - X) < 1.3) ultHit(f, o, i < 5 ? { dmg: 40, kb: 0.6, stun: 0.5, hs: 0.05 } : { dmg: 75, kb: 4, launch: 10, knock: true }, Math.sign(o.x - f.x) || f.facing);
       });
+      break;
+    case 'hana': {
+      f.startMove({ pose: 'cast', startup: 0.05, active: 0.05, recovery: 1.0, noHit: true });
+      const X = o.x;
+      petalStorm(X, 1.15, 1.25); SFX.swing();
+      for (let i = 0; i < 6; i++) schedule(0.12 + i * 0.13, () => {
+        SFX.swing(); burst(X, 1 + Math.random() * 1.4, 0.3, i % 2 ? 0xffffff : 0xff8fbf, 6, 5, 0.06, 0.35, 0);
+        if (i === 5) { SFX.boom(); addShake(0.4); ring(X, 1.2, 0.3, 0xff8fbf, 0.3, 2.6, 0.4); }
+        if (Math.abs(o.x - X) < 1.5 && o.y < 3) ultHit(f, o, i < 5 ? { dmg: 36, kb: 0.15, stun: 0.5, hs: 0.04 } : { dmg: 95, kb: 3, launch: 13, knock: true }, Math.sign(o.x - f.x) || f.facing);
+      });
+      break;
+    }
+    case 'ren':
+      f.startMove({ pose: 'dash', startup: 0.22, active: 0.05, recovery: 0.9, noHit: true, fire: () => {
+        const dir = Math.sign(o.x - f.x) || f.facing, from = f.x;
+        let tx = o.x + dir * 1.8;
+        if (Math.abs(tx) > ARENA - 0.2) tx = o.x - dir * 1.1;
+        const caught = o.canBeHit() && o.y < 2.4;
+        f.x = tx; f.facing = Math.sign(o.x - tx) || -dir;
+        streak(from, tx, f.y + 1.15 * s, f.def.pal.accent); SFX.zap(); addShake(0.3);
+        if (!caught) return;
+        ultHit(f, o, { dmg: 30, kb: 0, stun: 1.2, hs: 0.06 }, dir);
+        for (let i = 0; i < 3; i++) schedule(0.42 + i * 0.09, () => {
+          const y = o.y + 1.1 * o.def.scale; burst(o.x, y, 0.3, f.def.pal.accent, 6, 5, 0.06, 0.25, 0); SFX.hit(false);
+          ultHit(f, o, { dmg: 40, kb: 0.1, stun: 0.8, hs: 0.04 }, dir);
+        });
+        schedule(0.78, () => {
+          const y = o.y + 1.1 * o.def.scale;
+          ring(o.x, y, 0.3, f.def.pal.accent, 0.3, 3, 0.45); ring(o.x, y, 0.3, 0xffffff, 0.2, 2, 0.3);
+          burst(o.x, y, 0.3, 0x2a1d44, 16, 8, 0.1, 0.5, -4); SFX.boom(); addShake(0.5);
+          ultHit(f, o, { dmg: 140, kb: 5, launch: 11, knock: true, hs: 0.16 }, dir);
+        });
+      } });
       break;
     case 'gou':
       f.state = 'ultLeap'; f.t = 0; f.y = 0.001; f.vy = 14.25; f.vx = clamp((o.x - f.x) / 0.75, -14, 14);

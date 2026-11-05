@@ -66,7 +66,7 @@ export default function FegunArena() {
         <div className="menu-inner">
           <p className="eyebrow">ANIME 3D FIGHTING</p>
           <h1 className="logo"><span>FEGUN</span><span>ARENA</span></h1>
-          <p className="tag">네 명의 영웅, 하나의 링. 콤보로 기력을 모아 필살기와 궁극기로 승부를 내세요. 3판 2선승제입니다.</p>
+          <p className="tag">여섯 명의 영웅, 하나의 링. 콤보로 기력을 모아 필살기와 궁극기로 승부를 내세요. 3판 2선승제입니다.</p>
           <div className="menu-btns">
             <button className="btn" data-mode="cpu">1P vs CPU</button>
             <button className="btn alt" data-mode="pvp">1P vs 2P 로컬 대전</button>
